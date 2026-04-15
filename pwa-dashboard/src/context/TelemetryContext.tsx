@@ -32,16 +32,8 @@ interface TelemetryContextType {
 const TelemetryContext = createContext<TelemetryContextType | undefined>(undefined);
 
 export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [data, setData] = useState<TelemetryData>({
-        cycle_count: 5020,
-        temperature: 42.5,
-        inverter_current: 18.2,
-        switching_frequency: 3.2,
-        inrush_ratio: 0.8,
-        hybrid_rul_pct: 100,
-        physics_rul_pct: 100,
-        inverter_status: 1
-    });
+    // Start with empty state for real-mode, will be filled by localStorage or WebSocket
+    const [data, setData] = useState<TelemetryData>({});
     const [status, setStatus] = useState<'connected' | 'disconnected' | 'syncing' | 'demo'>('disconnected');
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [history, setHistory] = useState<TelemetryData[]>([]);
@@ -49,22 +41,37 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const ws = useRef<WebSocket | null>(null);
 
-    // Initial load
+    // Initial load: Only load from localStorage if we are in demo mode. If real mode, wait for ws
     useEffect(() => {
-        const saved = localStorage.getItem('last_telemetry');
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            setData(parsed);
-            setLastUpdated(new Date(parsed.local_ts || Date.now()));
+        if (demoMode) {
+            const saved = localStorage.getItem('last_telemetry');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                setData(parsed);
+                setLastUpdated(new Date(parsed.local_ts || Date.now()));
+            }
         }
-    }, []);
+    }, [demoMode]);
 
-    // WebSocket Management (Only if NOT in demo mode)
+    // WebSocket Management
     useEffect(() => {
         if (demoMode) {
             setStatus('demo');
             if (ws.current) ws.current.close();
-            return;
+            // Initialize demo data if blank
+            setData(prev => ({
+                cycle_count: prev.cycle_count ?? 5020,
+                temperature: prev.temperature ?? 42.5,
+                inverter_current: prev.inverter_current ?? 18.2,
+                switching_frequency: prev.switching_frequency ?? 3.2,
+                inrush_ratio: prev.inrush_ratio ?? 0.8,
+                hybrid_rul_pct: prev.hybrid_rul_pct ?? 100,
+                physics_rul_pct: prev.physics_rul_pct ?? 100,
+                inverter_status: prev.inverter_status ?? 1
+            }));
+        } else {
+            // Real mode - Ensure we clear the data state to show blank placeholders while waiting for connection
+            setData({});
         }
 
         const connect = () => {
@@ -74,7 +81,6 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             if (!token) return;
 
             setStatus('syncing');
-            // Use WSS for thingsboard.cloud or if the page is loaded over HTTPS
             const protocol = (host.includes('thingsboard.cloud') || (typeof window !== 'undefined' && window.location.protocol === 'https:')) ? 'wss' : 'ws';
             const url = `${protocol}://${host}/api/ws/plugins/telemetry?token=${token}`;
 
@@ -108,7 +114,38 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                         const timestampedData = { ...newData, local_ts: Date.now() };
                         setData(prev => ({ ...prev, ...timestampedData }));
                         setLastUpdated(new Date());
-                        setHistory(prev => [timestampedData, ...prev].slice(0, 100));
+
+                        // Alert Logic: Prioritize the 'alert_level' sent by the backend python script
+                        const backendAlert = newData.alert_level;
+                        if (backendAlert && backendAlert !== 'NORMAL') {
+                            const newAlert = {
+                                ...timestampedData,
+                                msg: backendAlert === 'CRITICAL' ? 'Immediate Shutdown Advised' : 'System Stress Detected'
+                            };
+                            setHistory(prev => {
+                                // Avoid duplicate alerts of the same level sequentially from backend spam
+                                if (prev[0] && prev[0].alert_level === backendAlert) return prev;
+                                return [newAlert, ...prev].slice(0, 50);
+                            });
+                        } else {
+                            const temp = newData.temperature ? Number(newData.temperature) : 0;
+                            const rul = newData.hybrid_rul_pct ? Number(newData.hybrid_rul_pct) : 100;
+                            if (temp > 75 || rul < 20) {
+                                // Fallback alert logic if backend isn't sending 'alert_level'
+                                const fallbackLevel = rul < 20 ? 'CRITICAL' : 'WARNING';
+                                const fallbackMsg = rul < 20 ? 'Critical Health Depletion' : 'High Thermal Stress Detected';
+
+                                setHistory(prev => {
+                                    if (prev[0] && prev[0].alert_level === fallbackLevel) return prev;
+                                    return [{
+                                        ...timestampedData,
+                                        alert_level: fallbackLevel,
+                                        msg: fallbackMsg
+                                    }, ...prev].slice(0, 50);
+                                });
+                            }
+                        }
+
                         localStorage.setItem('last_telemetry', JSON.stringify(timestampedData));
                     }
                 };
@@ -132,13 +169,10 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
         const interval = setInterval(() => {
             setData(prev => {
-                // Micro jitter for realism
                 const jitter = (range: number) => (Math.random() - 0.5) * range;
 
                 const newTemp = Math.min(Math.max((prev.temperature || 40) + jitter(0.8), 25), 90);
                 const newCurrent = Math.min(Math.max((prev.inverter_current || 15) + jitter(2), 0), 40);
-
-                // Simple Physics RUL degradation logic for demo
                 const stress = (newTemp > 65 ? 0.5 : 0.05) + (newCurrent > 30 ? 0.3 : 0.01);
                 const newRUL = Math.max((prev.hybrid_rul_pct || 100) - stress / 10, 0);
 
@@ -149,14 +183,16 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     temperature: newTemp,
                     inverter_current: newCurrent,
                     hybrid_rul_pct: newRUL,
-                    physics_rul_pct: newRUL + (Math.random() * 5), // Physics is less accurate
+                    physics_rul_pct: newRUL + (Math.random() * 5),
                     alert_level: alert,
                     local_ts: Date.now()
                 };
 
-                // Add to history if a state change happened (e.g. alert status changed)
                 if (alert !== prev.alert_level && alert !== 'NORMAL') {
-                    setHistory(h => [update, ...h].slice(0, 50));
+                    setHistory(h => [{
+                        ...update,
+                        msg: alert === 'CRITICAL' ? 'Immediate Shutdown Advised' : 'System Stress Detected'
+                    }, ...h].slice(0, 50));
                 }
 
                 return update;
@@ -169,7 +205,6 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const simulateStress = (type: 'temp' | 'inrush') => {
         if (demoMode) {
-            // Locally inject stress for demo
             setData(prev => ({
                 ...prev,
                 temperature: type === 'temp' ? 85 : prev.temperature,
