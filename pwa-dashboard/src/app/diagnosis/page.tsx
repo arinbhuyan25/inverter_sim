@@ -76,16 +76,13 @@ export default function DiagnosisPage() {
                 </div>
 
                 <div className="glass p-8 rounded-[2rem] border-purple-500/20 relative overflow-hidden">
-                    {/* Gradient Shine */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full blur-[80px] -mr-32 -mt-32" />
-
-                    <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center justify-between mb-8 relative z-10">
                         <div className="flex items-center gap-3">
                             <div className="bg-purple-500/20 p-2 rounded-lg text-purple-400">
                                 <Cpu size={20} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-lg uppercase tracking-tight text-purple-100">Hybrid AI Model</h3>
+                                <h3 className="font-bold text-lg uppercase tracking-tight text-white">Hybrid AI Model</h3>
                                 <span className="text-[10px] text-purple-400 uppercase font-bold">Pattern Intelligence</span>
                             </div>
                         </div>
@@ -94,26 +91,22 @@ export default function DiagnosisPage() {
                         </div>
                     </div>
 
-                    <div className="p-8 bg-purple-500/5 rounded-2xl border border-purple-500/10 flex flex-col items-center justify-center space-y-4 shadow-inner">
-                        <motion.span
-                            animate={{ opacity: [0.8, 1, 0.8] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className="text-6xl font-mono font-bold text-transparent bg-clip-text bg-gradient-to-br from-purple-400 to-blue-400"
-                        >
+                    <div className="p-8 bg-black/40 rounded-2xl border border-white/5 flex flex-col items-center justify-center space-y-4 shadow-inner relative z-10">
+                        <span className="text-6xl font-mono font-bold text-purple-400">
                             {data.hybrid_rul_pct?.toFixed(1) || '100.0'}%
-                        </motion.span>
-                        <p className="text-center text-xs text-purple-200/60 max-w-[250px] leading-relaxed">
+                        </span>
+                        <p className="text-center text-xs text-muted-foreground max-w-[250px] leading-relaxed">
                             LSTM-based inference considering non-linear inrush frequency and thermal transients.
                         </p>
                     </div>
 
-                    <div className="mt-6 flex flex-col gap-2">
-                        <div className="flex justify-between text-[10px] uppercase font-bold text-purple-400/60 px-1">
+                    <div className="mt-6 flex flex-col gap-2 relative z-10">
+                        <div className="flex justify-between text-[10px] uppercase font-bold text-muted-foreground px-1">
                             <span>Delta Detection</span>
                             <span>+ {Math.abs((data.hybrid_rul_pct || 0) - (data.physics_rul_pct || 0)).toFixed(1)}% Accuracy</span>
                         </div>
-                        <div className="h-2 w-full bg-purple-900/20 rounded-full overflow-hidden flex">
-                            <div className="h-full bg-purple-500 w-full animate-pulse"></div>
+                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden flex">
+                            <div className="h-full bg-purple-500 w-full"></div>
                         </div>
                     </div>
                 </div>
