@@ -1,8 +1,7 @@
-"use client";
-
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
 import {
     LayoutDashboard,
     Activity,
@@ -67,12 +66,17 @@ export const Sidebar = () => {
                             <Cpu size={14} className={demoMode ? 'text-health-green' : 'text-muted-foreground'} />
                             <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Demo Simulation</span>
                         </div>
-                        {/* Simple Toggle Switch */}
+                        {/* Framer-Motion Toggle Switch */}
                         <button
                             onClick={() => setDemoMode(!demoMode)}
-                            className={`w-9 h-5 rounded-full relative transition-colors ${demoMode ? 'bg-health-green' : 'bg-slate-700'}`}
+                            className={`w-10 h-6 rounded-full relative transition-colors duration-300 flex items-center px-1 ${demoMode ? 'bg-health-green' : 'bg-slate-700'}`}
                         >
-                            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${demoMode ? 'left-[18px]' : 'left-0.5'}`} />
+                            <motion.div
+                                layout
+                                transition={{ type: "spring", stiffness: 700, damping: 30 }}
+                                className="w-4 h-4 bg-white rounded-full shadow-sm"
+                                style={{ x: demoMode ? 16 : 0 }}
+                            />
                         </button>
                     </div>
                     <p className="text-[10px] text-muted-foreground leading-relaxed italic">
