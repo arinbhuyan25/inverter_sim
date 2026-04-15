@@ -10,36 +10,44 @@ interface RulGaugeProps {
 }
 
 export const RulGauge: React.FC<RulGaugeProps> = ({ value = 0, size = 280, label = "Hybrid RUL" }) => {
-    const radius = size * 0.4;
-    const strokeWidth = size * 0.1;
+    const radius = size * 0.42;
+    const strokeWidth = size * 0.08; // Thicker line
     const normalizedValue = Math.min(Math.max(value, 0), 100);
     const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (normalizedValue / 100) * circumference;
+    // 270 degree arc = 75% of circumference
+    const arcLength = circumference * 0.75;
+    const strokeDasharray = `${arcLength} ${circumference}`;
 
     // Determine color based on banding
     const getColor = (val: number) => {
         if (val <= 20) return '#ef4444'; // Red
         if (val <= 40) return '#f59e0b'; // Amber
-        return '#10b981'; // Green
+        return '#38bdf8'; // Matches primary brand blue
     };
 
     const currentColor = getColor(normalizedValue);
 
     return (
-        <div className="relative flex flex-col items-center justify-center" style={{ width: size, height: size }}>
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
-                {/* Background Track */}
+        <div className="relative flex flex-col items-center justify-center p-4" style={{ width: size, height: size }}>
+            <svg
+                width={size}
+                height={size}
+                viewBox={`0 0 ${size} ${size}`}
+                className="transform rotate-[135deg]"
+            >
+                {/* Clean Background Track Arc */}
                 <circle
                     cx={size / 2}
                     cy={size / 2}
                     r={radius}
-                    stroke="#1e293b"
+                    stroke="rgba(255, 255, 255, 0.05)"
                     strokeWidth={strokeWidth}
                     fill="transparent"
-                    strokeDasharray={circumference}
+                    strokeDasharray={strokeDasharray}
+                    strokeLinecap="round"
                 />
 
-                {/* Progress Arc */}
+                {/* Clean Progress Arc */}
                 <motion.circle
                     cx={size / 2}
                     cy={size / 2}
@@ -47,38 +55,29 @@ export const RulGauge: React.FC<RulGaugeProps> = ({ value = 0, size = 280, label
                     stroke={currentColor}
                     strokeWidth={strokeWidth}
                     fill="transparent"
-                    strokeDasharray={circumference}
-                    initial={{ strokeDashoffset: circumference }}
-                    animate={{ strokeDashoffset: offset }}
+                    strokeDasharray={strokeDasharray}
+                    initial={{ strokeDashoffset: arcLength }}
+                    animate={{ strokeDashoffset: arcLength * (1 - normalizedValue / 100) }}
                     transition={{ duration: 1.5, ease: "easeOut" }}
                     strokeLinecap="round"
-                    style={{
-                        filter: `drop-shadow(0 0 8px ${currentColor}40)`
-                    }}
                 />
             </svg>
 
             {/* Central Content */}
-            <div className="absolute flex flex-col items-center justify-center">
+            <div className="absolute flex flex-col items-center justify-center -mt-6">
                 <motion.span
-                    initial={{ opacity: 0, scale: 0.5 }}
+                    initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="text-5xl font-bold font-mono tracking-tighter"
+                    transition={{ delay: 0.2, duration: 0.8 }}
+                    className="text-[2.75rem] font-bold font-mono tracking-tighter"
+                    style={{ color: currentColor }}
                 >
-                    {normalizedValue.toFixed(1)}%
+                    {normalizedValue.toFixed(1)}<span className="text-xl font-medium tracking-normal items-baseline ml-1 opacity-70">%</span>
                 </motion.span>
-                <span className="text-muted-foreground text-xs uppercase font-bold tracking-widest mt-1">
+                <span className="text-muted-foreground/60 text-[10px] uppercase font-bold tracking-[0.3em] mt-2">
                     {label}
                 </span>
             </div>
-
-            {/* Outer Glow Effect */}
-            <div
-                className="absolute inset-0 rounded-full opacity-10 pointer-events-none"
-                style={{
-                    background: `radial-gradient(circle, ${currentColor} 0%, transparent 70%)`,
-                }}
-            />
         </div>
     );
 };
