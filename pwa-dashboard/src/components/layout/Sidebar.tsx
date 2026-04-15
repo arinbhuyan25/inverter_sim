@@ -70,9 +70,9 @@ export const Sidebar = () => {
                         {/* Simple Toggle Switch */}
                         <button
                             onClick={() => setDemoMode(!demoMode)}
-                            className={`w-8 h-4 rounded-full relative transition-colors ${demoMode ? 'bg-health-green' : 'bg-slate-700'}`}
+                            className={`w-9 h-5 rounded-full relative transition-colors ${demoMode ? 'bg-health-green' : 'bg-slate-700'}`}
                         >
-                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${demoMode ? 'left-4.5' : 'left-0.5'}`} />
+                            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${demoMode ? 'left-[18px]' : 'left-0.5'}`} />
                         </button>
                     </div>
                     <p className="text-[10px] text-muted-foreground leading-relaxed italic">
