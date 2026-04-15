@@ -1,34 +1,92 @@
+"use client";
+
+import React from 'react';
 import Link from 'next/link';
-import { LayoutDashboard, Activity, Bell, Settings, Zap } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import {
+    LayoutDashboard,
+    Activity,
+    Bell,
+    Settings,
+    ShieldCheck,
+    Zap,
+    Cpu,
+    Play
+} from 'lucide-react';
+import { useTelemetry } from '@/context/TelemetryContext';
 
 export const Sidebar = () => {
+    const pathname = usePathname();
+    const { demoMode, setDemoMode } = useTelemetry();
+
     const navItems = [
-        { icon: <LayoutDashboard size={20} />, label: 'Overview', href: '/' },
-        { icon: <Activity size={20} />, label: 'Diagnosis', href: '/diagnosis' },
-        { icon: <Bell size={20} />, label: 'Alerts', href: '/alerts' },
+        { label: 'Overview', icon: LayoutDashboard, href: '/' },
+        { label: 'Diagnosis', icon: Activity, href: '/diagnosis' },
+        { label: 'Alerts', icon: Bell, href: '/alerts' },
     ];
 
     return (
-        <aside className="fixed left-0 top-0 h-full w-20 md:w-64 glass border-r z-50 transition-all duration-300">
-            <div className="flex h-20 items-center gap-3 px-6 border-b">
-                <div className="bg-primary p-2 rounded-lg">
-                    <Zap size={24} className="text-white" />
+        <div className="fixed left-0 top-0 h-full w-64 glass border-r border-white/10 hidden md:flex flex-col p-6 z-50">
+            <div className="flex items-center gap-3 mb-12 px-2">
+                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+                    <Zap className="text-white" size={20} />
                 </div>
-                <span className="font-bold text-xl hidden md:block tracking-tight">LUMINOUS</span>
+                <div>
+                    <h1 className="text-xl font-bold font-mono tracking-tighter leading-none">LUMINOUS</h1>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Early Warning</span>
+                </div>
             </div>
 
-            <nav className="mt-8 px-4 space-y-2">
-                {navItems.map((item) => (
-                    <Link
-                        key={item.href}
-                        href={item.href}
-                        className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/5 transition-colors text-muted-foreground hover:text-white"
-                    >
-                        {item.icon}
-                        <span className="font-medium hidden md:block">{item.label}</span>
-                    </Link>
-                ))}
+            <nav className="flex-1 space-y-2">
+                {navItems.map((item) => {
+                    const isActive = pathname === item.href;
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all group ${isActive
+                                    ? 'bg-primary/10 text-primary border border-primary/20'
+                                    : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+                                }`}
+                        >
+                            <item.icon size={20} className={isActive ? 'text-primary' : 'group-hover:scale-110 transition-transform'} />
+                            <span className="font-medium text-sm">{item.label}</span>
+                            {isActive && (
+                                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                            )}
+                        </Link>
+                    );
+                })}
             </nav>
-        </aside>
+
+            {/* Simulation Toggle - The "Pro" Presentation Tool */}
+            <div className="mt-auto pt-6 border-t border-white/5">
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <Cpu size={14} className={demoMode ? 'text-health-green' : 'text-muted-foreground'} />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Demo Simulation</span>
+                        </div>
+                        {/* Simple Toggle Switch */}
+                        <button
+                            onClick={() => setDemoMode(!demoMode)}
+                            className={`w-8 h-4 rounded-full relative transition-colors ${demoMode ? 'bg-health-green' : 'bg-slate-700'}`}
+                        >
+                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${demoMode ? 'left-4.5' : 'left-0.5'}`} />
+                        </button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed italic">
+                        Enable high-frequency autonomous data for presentation in low-signal environments.
+                    </p>
+                </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-1 px-2">
+                <div className="flex items-center gap-2 text-health-green">
+                    <ShieldCheck size={14} />
+                    <span className="text-[10px] uppercase font-bold tracking-widest">Logic Secure</span>
+                </div>
+            </div>
+        </div>
     );
 };
