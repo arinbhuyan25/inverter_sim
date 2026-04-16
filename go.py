@@ -3,15 +3,15 @@ import time
 import sys
 
 scripts = [
-    ["python", "inverter_sim.py"],
-    ["python", "modbus_mqtt_bridge.py"]
+    {"cmd": ["python", "inverter_sim.py"], "cwd": "backend"},
+    {"cmd": ["python", "modbus_mqtt_bridge.py"], "cwd": "backend"}
 ]
 
 def start_processes():
     procs = []
-    print("Starting Inverter Autonomous Pipeline...")
-    for cmd in scripts:
-        p = subprocess.Popen(cmd)
+    print("🚀 Starting A.R.M.S. Unified Pipeline...")
+    for item in scripts:
+        p = subprocess.Popen(item["cmd"], cwd=item["cwd"])
         procs.append(p)
         time.sleep(2) # Stagger starts
     return procs
@@ -22,8 +22,8 @@ if __name__ == "__main__":
         while True:
             for i, p in enumerate(processes):
                 if p.poll() is not None:
-                    print(f"Process {scripts[i][1]} died. Restarting...")
-                    processes[i] = subprocess.Popen(scripts[i])
+                    print(f"Process {scripts[i]['cmd'][1]} died. Restarting...")
+                    processes[i] = subprocess.Popen(scripts[i]["cmd"], cwd=scripts[i]["cwd"])
             time.sleep(5)
     except KeyboardInterrupt:
         print("Shutting down system...")
