@@ -14,7 +14,10 @@ import {
 } from "lucide-react";
 
 export default function Dashboard() {
-  const { data, status, simulateStress } = useTelemetry();
+  const { data, status, lastUpdated, simulateStress } = useTelemetry();
+
+  const isDisconnected = status === 'disconnected';
+  const isSyncing = status === 'syncing';
 
   // Safe numeric cast — ThingsBoard sends values as strings over WebSocket
   const toNum = (val: any): number => Number(val) || 0;
@@ -43,12 +46,23 @@ export default function Dashboard() {
         <div className="flex gap-4">
           <div className="glass px-6 py-3 rounded-2xl flex items-center gap-4 border-white/5 relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className={`p-2.5 rounded-xl ${status === 'connected' ? 'bg-health-green/20 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : status === 'demo' ? 'bg-accent/20 shadow-[0_0_15px_rgba(255,123,0,0.3)]' : 'bg-health-red/20 shadow-[0_0_15px_rgba(239,68,68,0.3)]'}`}>
+              <Activity size={20} className={status === 'connected' ? 'text-health-green' : status === 'demo' ? 'text-accent' : 'text-health-red'} />
+            </div>
+            <div className="z-10 relative">
+              <span className="text-[10px] text-muted-foreground/80 uppercase font-bold tracking-[0.2em] block mb-0.5">Link Status</span>
+              <span className="font-bold tracking-wider text-sm glow-text uppercase">{status}</span>
+            </div>
+          </div>
+
+          <div className="glass px-6 py-3 rounded-2xl flex items-center gap-4 border-white/5 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className={`p-2.5 rounded-xl ${data.inverter_status === 1 ? 'bg-health-green/20 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'bg-primary/20 shadow-[0_0_15px_rgba(14,165,233,0.3)]'}`}>
               <Power size={20} className={data.inverter_status === 1 ? 'text-health-green' : 'text-primary'} />
             </div>
             <div className="z-10 relative">
               <span className="text-[10px] text-muted-foreground/80 uppercase font-bold tracking-[0.2em] block mb-0.5">Input Source</span>
-              <span className="font-bold tracking-wider text-sm glow-text">{data.inverter_status === 1 ? 'BATTERY' : 'MAINS CABLE'}</span>
+              <span className="font-bold tracking-wider text-sm glow-text">{isDisconnected ? '--' : (data.inverter_status === 1 ? 'BATTERY' : 'MAINS CABLE')}</span>
             </div>
           </div>
         </div>
@@ -68,17 +82,17 @@ export default function Dashboard() {
           </div>
 
           <div className="mt-8">
-            <RulGauge value={toNum(data.hybrid_rul_pct) || 100} size={280} />
+            <RulGauge value={isDisconnected ? 0 : (toNum(data.hybrid_rul_pct) || 100)} size={280} />
           </div>
 
           <div className="absolute bottom-6 left-12 right-12 flex justify-between px-2 py-4 bg-transparent z-10">
             <div className="flex flex-col items-start gap-1.5">
               <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.3em]">Physics RUL</span>
-              <span className="text-xl font-mono font-bold text-[#38bdf8] tracking-widest">{toNum(data.physics_rul_pct).toFixed(1) || '100.0'}%</span>
+              <span className="text-xl font-mono font-bold text-[#38bdf8] tracking-widest">{isDisconnected ? '--' : (toNum(data.physics_rul_pct).toFixed(1) || '100.0') + '%'}</span>
             </div>
             <div className="flex flex-col items-end gap-1.5">
               <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.3em]">ML Confidence</span>
-              <span className="text-xl font-mono font-bold text-[#38bdf8] tracking-widest">98.4%</span>
+              <span className="text-xl font-mono font-bold text-[#38bdf8] tracking-widest">{isDisconnected ? '--' : '98.4%'}</span>
             </div>
           </div>
         </div>
@@ -89,32 +103,32 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1 mt-2">
             <StatCard
               title="Avg Temperature"
-              value={data.temperature ? toNum(data.temperature).toFixed(1) : '--'}
+              value={!isDisconnected && data.temperature ? toNum(data.temperature).toFixed(1) : '--'}
               unit="°C"
               icon={<Thermometer size={20} />}
-              status={getSeverity(data.temperature, 65, 80)}
+              status={isDisconnected ? 'normal' : getSeverity(data.temperature, 65, 80)}
               trend="Ambient stress indicator"
             />
             <StatCard
               title="Cycle Count"
-              value={data.cycle_count ? toNum(data.cycle_count) : '--'}
+              value={!isDisconnected && data.cycle_count ? toNum(data.cycle_count) : '--'}
               icon={<RotateCw size={20} />}
               trend="Mechanical relay wear"
             />
             <StatCard
               title="Switch Frequency"
-              value={data.switching_frequency ? toNum(data.switching_frequency).toFixed(1) : '--'}
+              value={!isDisconnected && data.switching_frequency ? toNum(data.switching_frequency).toFixed(1) : '--'}
               unit="/hr"
               icon={<Activity size={20} />}
-              status={getSeverity(data.switching_frequency, 5, 10)}
+              status={isDisconnected ? 'normal' : getSeverity(data.switching_frequency, 5, 10)}
               trend="Degradation multiplier"
             />
             <StatCard
               title="Inrush Ratio"
-              value={data.inrush_ratio ? toNum(data.inrush_ratio).toFixed(1) : '--'}
+              value={!isDisconnected && data.inrush_ratio ? toNum(data.inrush_ratio).toFixed(1) : '--'}
               unit="%"
               icon={<Zap size={20} />}
-              status={getSeverity(data.inrush_ratio, 1.5, 2.5)}
+              status={isDisconnected ? 'normal' : getSeverity(data.inrush_ratio, 1.5, 2.5)}
               trend="High current stress"
             />
           </div>

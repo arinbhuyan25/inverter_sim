@@ -60,7 +60,11 @@ except FileNotFoundError as exc:
 #   alert_client      — publishes simplified alert payloads to mobile topic
 
 def _make_client(name: str, token: str, callbacks: dict) -> mqtt.Client:
-    client = mqtt.Client(client_id=name, protocol=mqtt.MQTTv5)
+    client = mqtt.Client(
+        callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+        client_id=name, 
+        protocol=mqtt.MQTTv5
+    )
     client.username_pw_set(username=token, password="")
     for event, fn in callbacks.items():
         setattr(client, event, fn)
@@ -161,11 +165,11 @@ def _on_connect_sub(client, userdata, flags, rc, properties=None):
         client.subscribe(TELEMETRY_TOPIC, qos=1)
         logger.info("   Subscribed to: %s", TELEMETRY_TOPIC)
     else:
-        logger.error("Subscriber connect failed (rc=%d)", rc)
+        logger.error("Subscriber connect failed (rc=%s)", str(rc))
 
 
-def _on_disconnect_sub(client, userdata, rc, properties=None, reason=None):
-    logger.warning("Subscriber disconnected (rc=%d) — will reconnect…", rc)
+def _on_disconnect_sub(client, userdata, disconnect_flags, rc, properties=None):
+    logger.warning("Subscriber disconnected (rc=%s) — will reconnect…", str(rc))
 
 
 def _on_message(client, userdata, msg):
@@ -196,7 +200,7 @@ def _on_connect_pub(client, userdata, flags, rc, properties=None):
     if rc == 0:
         logger.info("✅ Publisher connected")
     else:
-        logger.error("Publisher connect failed (rc=%d)", rc)
+        logger.error("Publisher connect failed (rc=%s)", str(rc))
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

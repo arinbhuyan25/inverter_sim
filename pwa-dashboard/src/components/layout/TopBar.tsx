@@ -37,6 +37,15 @@ export const TopBar = () => {
                                 <span className="text-xs font-bold uppercase tracking-widest">Offline</span>
                             </div>
                         )}
+                        {status === 'demo' && (
+                            <div className="flex items-center gap-2 text-accent glow-text shadow-[0_0_10px_rgba(255,123,0,0.3)]">
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-accent shadow-[0_0_8px_#ff7b00]"></span>
+                                </span>
+                                <span className="text-xs font-bold uppercase tracking-widest text-accent">Simulator</span>
+                            </div>
+                        )}
                     </div>
                     {lastUpdated && (
                         <span className="text-[10px] text-primary/60 mt-1 uppercase tracking-widest font-medium">

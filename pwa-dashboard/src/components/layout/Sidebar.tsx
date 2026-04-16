@@ -33,8 +33,8 @@ export const Sidebar = () => {
                     <Zap className="text-white" size={20} />
                 </div>
                 <div>
-                    <h1 className="text-xl font-bold font-mono tracking-tighter leading-none">LUMINOUS</h1>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Early Warning</span>
+                    <h1 className="text-xl font-bold font-mono tracking-tighter leading-none">ARMS</h1>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Inverter Security Service</span>
                 </div>
             </div>
 

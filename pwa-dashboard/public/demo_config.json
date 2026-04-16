@@ -1,0 +1,23 @@
+{
+    "initial": {
+        "hybrid_rul_pct": 82.4,
+        "physics_rul_pct": 85.1,
+        "temperature": 42.5,
+        "inverter_current": 18.2,
+        "cycle_count": 5020,
+        "inrush_ratio": 0.82
+    },
+    "constraints": {
+        "min_temp": 28.0,
+        "max_temp": 95.0,
+        "min_rul": 5.0,
+        "min_current": 0.0,
+        "max_current": 45.0
+    },
+    "logic": {
+        "degradation_base": 0.005,
+        "stress_multipler": 2.5,
+        "thermal_threshold": 65.0,
+        "jitter_range": 0.4
+    }
+}

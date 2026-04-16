@@ -13,7 +13,8 @@ import {
 import { motion } from "framer-motion";
 
 export default function DiagnosisPage() {
-    const { data } = useTelemetry();
+    const { data, status } = useTelemetry();
+    const isDisconnected = status === 'disconnected';
 
     // Mapping of register keys to friendly names/descriptions
     const registers = [
@@ -56,7 +57,7 @@ export default function DiagnosisPage() {
 
                     <div className="p-8 bg-black/40 rounded-2xl border border-white/5 flex flex-col items-center justify-center space-y-4">
                         <span className="text-6xl font-mono font-bold text-blue-400">
-                            {data.physics_rul_pct?.toFixed(1) || '100.0'}%
+                            {isDisconnected ? '--' : (data.physics_rul_pct?.toFixed(1) || '100.0')}%
                         </span>
                         <p className="text-center text-xs text-muted-foreground max-w-[250px] leading-relaxed">
                             calculated using Linear Arrhenius degradation based on cycle count and temperature thresholds.
@@ -93,7 +94,7 @@ export default function DiagnosisPage() {
 
                     <div className="p-8 bg-black/40 rounded-2xl border border-white/5 flex flex-col items-center justify-center space-y-4 shadow-inner relative z-10">
                         <span className="text-6xl font-mono font-bold text-purple-400">
-                            {data.hybrid_rul_pct?.toFixed(1) || '100.0'}%
+                            {isDisconnected ? '--' : (data.hybrid_rul_pct?.toFixed(1) || '100.0')}%
                         </span>
                         <p className="text-center text-xs text-muted-foreground max-w-[250px] leading-relaxed">
                             LSTM-based inference considering non-linear inrush frequency and thermal transients.
@@ -147,7 +148,7 @@ export default function DiagnosisPage() {
                                     <td className="px-8 py-4 text-xs text-muted-foreground">{reg.desc}</td>
                                     <td className="px-8 py-4 text-right">
                                         <span className={`font-mono font-bold px-3 py-1 rounded-lg bg-white/5 border border-white/5 group-hover:border-primary/20 transition-colors`}>
-                                            {data[reg.key] !== undefined ? data[reg.key].toString() : '--'}
+                                            {isDisconnected ? '--' : (data[reg.key] !== undefined ? data[reg.key].toString() : '--')}
                                         </span>
                                     </td>
                                 </tr>

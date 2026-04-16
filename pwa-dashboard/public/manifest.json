@@ -1,7 +1,7 @@
 {
-    "name": "Luminous Early Warning System",
-    "short_name": "Luminous EW",
-    "description": "Predictive maintenance dashboard for industrial inverters",
+    "name": "ARMS | Inverter Security Service",
+    "short_name": "ARMS",
+    "description": "Advanced Real-time Monitoring & Safety dashboard for industrial inverters",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#000000",

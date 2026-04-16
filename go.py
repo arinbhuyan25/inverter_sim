@@ -4,8 +4,7 @@ import sys
 
 scripts = [
     ["python", "inverter_sim.py"],
-    ["python", "modbus_mqtt_bridge.py"],
-    ["python", "mqtt_backend.py"]
+    ["python", "modbus_mqtt_bridge.py"]
 ]
 
 def start_processes():

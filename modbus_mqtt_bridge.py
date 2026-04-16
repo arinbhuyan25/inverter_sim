@@ -30,6 +30,8 @@ from dotenv import load_dotenv
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
+from rul_engine import hybrid_rul, load_model
+
 load_dotenv()
 
 # ── Logging ──────────────────────────────────────────────────────────────────
@@ -204,17 +206,19 @@ def _on_connect(client, userdata, flags, rc, properties=None):
         logger.info("✅ MQTT connected to %s:%d", MQTT_HOST, MQTT_PORT)
     else:
         _mqtt_connected = False
-        logger.error("MQTT connection failed (rc=%d)", rc)
+        logger.error("MQTT connection failed (rc=%s)", str(rc))
 
 
-def _on_disconnect(client, userdata, rc, properties=None, reason=None):
+def _on_disconnect(client, userdata, disconnect_flags, rc, properties=None):
     global _mqtt_connected
     _mqtt_connected = False
-    logger.warning("MQTT disconnected (rc=%d). Will reconnect…", rc)
+    logger.warning("MQTT disconnected (rc=%s). Will reconnect…", str(rc))
 
 
 def _build_mqtt_client() -> mqtt.Client:
+    # Use Callback API Version 2 for paho-mqtt 2.x compatibility
     client = mqtt.Client(
+        callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
         client_id=f"bridge_{DEVICE_ID}",
         protocol=mqtt.MQTTv5,
     )
@@ -273,6 +277,15 @@ def main():
     mqtt_client = _build_mqtt_client()
     _mqtt_connect_with_backoff(mqtt_client)
 
+    # ── AI Model setup ──────────────────────────────────────────────────────
+    logger.info("🧠 Loading Hybrid AI Engine…")
+    try:
+        model, scaler = load_model()
+        logger.info("✅ AI Engine ready for Edge inference")
+    except Exception as e:
+        logger.error("❌ Failed to load AI model: %s", e)
+        model, scaler = None, None
+
     # ── Modbus setup ────────────────────────────────────────────────────────
     modbus_client = ModbusTcpClient(MODBUS_HOST, port=MODBUS_PORT)
     modbus_backoff = 1.0
@@ -317,7 +330,21 @@ def main():
         # Compute derived metrics
         sw_freq, inrush_ratio = _compute_metrics(edge_state)
 
-        # Build telemetry payload (exact schema agreed with teammate)
+        # 3. AI Inference (Hybrid RUL)
+        ml_stats = {"ml_rul_pct": None, "physics_rul_pct": None, "hybrid_rul_pct": None, "alert_level": "NORMAL"}
+        if model and scaler:
+            ml_stats = hybrid_rul(
+                cycle_count=raw["cycle_count"],
+                avg_current=round(raw["inv_current"] / 10.0, 2),
+                avg_temperature=round(raw["temperature"] / 10.0, 1),
+                switching_frequency=sw_freq,
+                inrush_ratio=inrush_ratio,
+                model=model,
+                scaler=scaler,
+                physics_health_index=raw["physics_health"]
+            )
+
+        # Build telemetry payload
         ts_ms = int(time.time() * 1000)
         payload = {
             "device_id":          DEVICE_ID,
@@ -333,8 +360,10 @@ def main():
             "physics_health_index": raw["physics_health"],
             "switching_frequency": sw_freq,
             "inrush_ratio":       inrush_ratio,
-            "ml_rul_pct":         None,    # filled in by mqtt_backend.py
-            "alert_level":        "NORMAL",
+            "ml_rul_pct":         ml_stats.get("ml_rul_pct"),
+            "physics_rul_pct":    ml_stats.get("physics_rul_pct"),
+            "hybrid_rul_pct":     ml_stats.get("hybrid_rul_pct"),
+            "alert_level":        ml_stats.get("alert_level", "NORMAL"),
         }
 
         _publish(mqtt_client, payload)
