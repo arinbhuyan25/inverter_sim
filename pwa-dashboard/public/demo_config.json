@@ -9,7 +9,7 @@
     },
     "constraints": {
         "min_temp": 28.0,
-        "max_temp": 95.0,
+        "max_temp": 65.0,
         "min_rul": 5.0,
         "min_current": 0.0,
         "max_current": 45.0

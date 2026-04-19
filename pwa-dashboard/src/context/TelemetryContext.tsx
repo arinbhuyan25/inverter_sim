@@ -212,29 +212,40 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
     }, [demoMode, config]);
 
-    // Advanced Demo Mode Simulation Logic (PIML Arc Energy Model)
+    // Advanced Demo Mode Simulation Logic (Physics Degradation Model)
     useEffect(() => {
         if (!demoMode) return;
 
         const interval = setInterval(() => {
             setData(prev => {
                 const jitter = (range: number) => (Math.random() - 0.5) * range;
-                const L = config?.logic || { thermal_threshold: 65, stress_multipler: 2.5, degradation_base: 0.005 };
-                const C = config?.constraints || { min_temp: 32, max_temp: 85, max_current: 40, min_rul: 5.2 };
+                const C = config?.constraints || { min_temp: 28, max_temp: 65, max_current: 45, min_rul: 0 };
 
-                // 1. Ambient Thermal Drift
-                const newTemp = Math.min(Math.max((prev.temperature || 40) + jitter(0.5), C.min_temp), C.max_temp);
+                // 1. Ambient Thermal Drift (Capped at 65C)
+                const targetTemp = prev.temperature || 40;
+                let newTemp = Math.min(Math.max(targetTemp + jitter(0.5), C.min_temp), 65);
 
-                // 2. Load Oscillation
-                const newCurrent = Math.min(Math.max((prev.inverter_current || 15) + jitter(2), 2), C.max_current);
+                // 2. Load & Current Logic (Nominal baseline: 5.0A, drift back if stressed)
+                const currentLimit = C.max_current || 45;
+                const currentTarget = (prev.inverter_current || 5) > 10 ? 27.5 : 5.0;
+                let newCurrent = (prev.inverter_current || 5) + (currentTarget - (prev.inverter_current || 5)) * 0.1 + jitter(0.5);
+                newCurrent = Math.min(Math.max(newCurrent, 0), currentLimit);
 
-                // 3. Arc Energy Logic (Degradation)
-                const thermalStress = newTemp > L.thermal_threshold ? (L.degradation_base * 10) : L.degradation_base;
-                const loadStress = (newCurrent / C.max_current) * (L.degradation_base * L.stress_multipler);
-                const combinedDegradation = (thermalStress + loadStress) * (Math.random() * 1.5);
+                // 3. Compounding Physics RUL Formula
+                // RUL = 100 - (cycles / 1000) * exp(current / 10) * 2^((T - 25) / 10)
+                const cycles = (prev.cycle_count || 5000) + (Math.random() > 0.8 ? 1 : 0);
+                const stressFactor = Math.pow(2, (newTemp - 25) / 10);
+                const currentPenalty = Math.exp(newCurrent / 10);
+                const damage = (cycles / 1000) * currentPenalty * stressFactor;
+                
+                const targetRUL = Math.max(100 - damage, 0);
+                
+                // Physics Rule: RUL must be monotonic (only decrease)
+                const newRUL = Math.min(prev.hybrid_rul_pct !== undefined ? prev.hybrid_rul_pct : 100, targetRUL);
 
-                const newRUL = Math.max((prev.hybrid_rul_pct || 100) - combinedDegradation, C.min_rul);
-                const alert = newRUL < 20 ? 'CRITICAL' : newRUL < 45 ? 'WARNING' : 'NORMAL';
+                // 4. Alert Logic Correlated to Physics state
+                // 65C is Hardware Trip Point; RUL < 5% is Critical Depletion
+                const alert = (newTemp >= 64.5 || newRUL < 5) ? 'CRITICAL' : newRUL < 45 ? 'WARNING' : 'NORMAL';
 
                 const update = {
                     ...prev,
@@ -243,7 +254,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     hybrid_rul_pct: newRUL,
                     physics_rul_pct: Math.min(newRUL + 2.5, 100),
                     alert_level: alert,
-                    cycle_count: (prev.cycle_count || 5000) + (Math.random() > 0.8 ? 1 : 0),
+                    cycle_count: cycles,
                     local_ts: Date.now()
                 };
 
@@ -268,9 +279,9 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (demoMode) {
             setData(prev => ({
                 ...prev,
-                temperature: type === 'temp' ? 85 : prev.temperature,
+                temperature: type === 'temp' ? 65 : prev.temperature,
                 inrush_ratio: type === 'inrush' ? 15 : prev.inrush_ratio,
-                inverter_current: type === 'inrush' ? 35 : prev.inverter_current
+                inverter_current: type === 'inrush' ? 27.5 : prev.inverter_current
             }));
             return;
         }
