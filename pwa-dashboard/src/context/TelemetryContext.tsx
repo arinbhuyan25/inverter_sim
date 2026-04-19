@@ -223,8 +223,13 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
                 // 1. Ambient Thermal Drift (Capped at 65C, HOLD if Peak is initiated)
                 const isPeakActive = (prev.inverter_current || 5) > 10 || (prev.temperature || 0) >= 64.5;
-                const ambientTarget = isPeakActive ? 65.0 : 40.0;
-                let newTemp = (prev.temperature || 40) + (ambientTarget - (prev.temperature || 40)) * 0.1 + jitter(0.5);
+                let newTemp;
+                if (isPeakActive) {
+                    newTemp = 65.0; // Static 65C during Peak
+                } else {
+                    const ambientTarget = 40.0;
+                    newTemp = (prev.temperature || 40) + (ambientTarget - (prev.temperature || 40)) * 0.1 + jitter(0.5);
+                }
                 newTemp = Math.min(Math.max(newTemp, C.min_temp), 65);
 
                 // 2. Load & Current Logic (Nominal baseline: 5.0A, drift back always)

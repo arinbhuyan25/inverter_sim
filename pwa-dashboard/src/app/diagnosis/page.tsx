@@ -59,7 +59,7 @@ export default function DiagnosisPage() {
 
                     <div className="p-8 bg-black/40 rounded-2xl border border-white/5 flex flex-col items-center justify-center space-y-4">
                         <span className="text-6xl font-mono font-bold text-blue-400">
-                            {isDisconnected ? '--' : (data.physics_rul_pct?.toFixed(1) || '100.0')}%
+                            {isDisconnected ? '--' : (data.physics_rul_pct !== undefined ? data.physics_rul_pct.toFixed(1) : '100.0')}%
                         </span>
                         <p className="text-center text-xs text-muted-foreground max-w-[250px] leading-relaxed">
                             calculated using Linear Arrhenius degradation based on cycle count and temperature thresholds.
@@ -96,7 +96,7 @@ export default function DiagnosisPage() {
 
                     <div className="p-8 bg-black/40 rounded-2xl border border-white/5 flex flex-col items-center justify-center space-y-4 shadow-inner relative z-10">
                         <span className="text-6xl font-mono font-bold text-purple-400">
-                            {isDisconnected ? '--' : (data.hybrid_rul_pct?.toFixed(1) || '100.0')}%
+                            {isDisconnected ? '--' : (data.hybrid_rul_pct !== undefined ? data.hybrid_rul_pct.toFixed(1) : '100.0')}%
                         </span>
                         <p className="text-center text-xs text-muted-foreground max-w-[250px] leading-relaxed">
                             LSTM-based inference considering non-linear inrush frequency and thermal transients.

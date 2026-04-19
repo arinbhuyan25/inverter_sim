@@ -82,7 +82,7 @@ export default function Dashboard() {
           </div>
 
           <div className="mt-8">
-            <RulGauge value={isDisconnected ? 0 : (toNum(data.hybrid_rul_pct) || 100)} size={280} />
+            <RulGauge value={isDisconnected ? 0 : (data.hybrid_rul_pct !== undefined ? toNum(data.hybrid_rul_pct) : 100)} size={280} />
           </div>
 
           <div className="absolute bottom-6 left-12 right-12 flex justify-between px-2 py-4 bg-transparent z-10">
