@@ -225,21 +225,23 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 const targetTemp = prev.temperature || 40;
                 let newTemp = Math.min(Math.max(targetTemp + jitter(0.5), C.min_temp), 65);
 
-                // 2. Load & Current Logic (Nominal baseline: 5.0A, drift back if stressed)
-                const isStressMode = (prev.inverter_current || 5) > 10;
+                // 2. Load & Current Logic (Nominal baseline: 5.0A, drift back always)
                 const currentLimit = C.max_current || 45;
-                const currentTarget = isStressMode ? 27.5 : 5.0;
+                const currentTarget = 5.0; // Always drift back to nominal
                 let newCurrent = (prev.inverter_current || 5) + (currentTarget - (prev.inverter_current || 5)) * 0.1 + jitter(0.5);
                 newCurrent = Math.min(Math.max(newCurrent, 0), currentLimit);
 
                 // 2b. Switching Frequency & Inrush Ratio
+                const isStressMode = newCurrent > 10;
+                
                 // Switching Frequency: 4.0 - 18.0 /hr
                 let newFreq = (prev.switching_frequency || 12) + jitter(0.2);
                 newFreq = Math.min(Math.max(newFreq, 4.0), 18.0);
                 
-                // Inrush Ratio: 0.04 - 0.15 (Normal) or 0.80 - 0.95 (Stress)
-                const inrushTarget = isStressMode ? (0.80 + Math.random() * 0.15) : (0.04 + Math.random() * 0.11);
-                let newInrush = (prev.inrush_ratio || 0.08) + (inrushTarget - (prev.inrush_ratio || 0.08)) * 0.2;
+                // Inrush Ratio: 4.0% - 15.0% (Normal) or 80.0% - 95.0% (Stress)
+                // We use percentage values (0-100) to match UI display and severity thresholds
+                const inrushTarget = isStressMode ? (80.0 + Math.random() * 15.0) : (4.0 + Math.random() * 11.0);
+                let newInrush = (prev.inrush_ratio || 8.0) + (inrushTarget - (prev.inrush_ratio || 8.0)) * 0.4;
 
                 // 3. Compounding Physics RUL Formula
                 // RUL = 100 - (cycles / 1000) * exp(current / 10) * 2^((T - 25) / 10)
@@ -292,7 +294,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             setData(prev => ({
                 ...prev,
                 temperature: type === 'temp' ? 65 : prev.temperature,
-                inrush_ratio: type === 'inrush' ? 0.92 : prev.inrush_ratio,
+                inrush_ratio: type === 'inrush' ? 92.0 : prev.inrush_ratio,
                 inverter_current: type === 'inrush' ? 27.5 : prev.inverter_current
             }));
             return;
@@ -318,7 +320,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 temperature: 42.5,
                 inverter_current: 5.0,
                 switching_frequency: 12.4,
-                inrush_ratio: 0.08,
+                inrush_ratio: 8.2,
                 hybrid_rul_pct: 73.2,
                 physics_rul_pct: 75.7,
                 inverter_status: 1,
