@@ -226,10 +226,20 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 let newTemp = Math.min(Math.max(targetTemp + jitter(0.5), C.min_temp), 65);
 
                 // 2. Load & Current Logic (Nominal baseline: 5.0A, drift back if stressed)
+                const isStressMode = (prev.inverter_current || 5) > 10;
                 const currentLimit = C.max_current || 45;
-                const currentTarget = (prev.inverter_current || 5) > 10 ? 27.5 : 5.0;
+                const currentTarget = isStressMode ? 27.5 : 5.0;
                 let newCurrent = (prev.inverter_current || 5) + (currentTarget - (prev.inverter_current || 5)) * 0.1 + jitter(0.5);
                 newCurrent = Math.min(Math.max(newCurrent, 0), currentLimit);
+
+                // 2b. Switching Frequency & Inrush Ratio
+                // Switching Frequency: 4.0 - 18.0 /hr
+                let newFreq = (prev.switching_frequency || 12) + jitter(0.2);
+                newFreq = Math.min(Math.max(newFreq, 4.0), 18.0);
+                
+                // Inrush Ratio: 0.04 - 0.15 (Normal) or 0.80 - 0.95 (Stress)
+                const inrushTarget = isStressMode ? (0.80 + Math.random() * 0.15) : (0.04 + Math.random() * 0.11);
+                let newInrush = (prev.inrush_ratio || 0.08) + (inrushTarget - (prev.inrush_ratio || 0.08)) * 0.2;
 
                 // 3. Compounding Physics RUL Formula
                 // RUL = 100 - (cycles / 1000) * exp(current / 10) * 2^((T - 25) / 10)
@@ -251,6 +261,8 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     ...prev,
                     temperature: newTemp,
                     inverter_current: newCurrent,
+                    switching_frequency: newFreq,
+                    inrush_ratio: newInrush,
                     hybrid_rul_pct: newRUL,
                     physics_rul_pct: Math.min(newRUL + 2.5, 100),
                     alert_level: alert,
@@ -280,7 +292,7 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             setData(prev => ({
                 ...prev,
                 temperature: type === 'temp' ? 65 : prev.temperature,
-                inrush_ratio: type === 'inrush' ? 15 : prev.inrush_ratio,
+                inrush_ratio: type === 'inrush' ? 0.92 : prev.inrush_ratio,
                 inverter_current: type === 'inrush' ? 27.5 : prev.inverter_current
             }));
             return;
@@ -304,11 +316,11 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             setData({
                 cycle_count: 5020,
                 temperature: 42.5,
-                inverter_current: 18.2,
-                switching_frequency: 3.2,
-                inrush_ratio: 0.82,
-                hybrid_rul_pct: 82.4,
-                physics_rul_pct: 85.1,
+                inverter_current: 5.0,
+                switching_frequency: 12.4,
+                inrush_ratio: 0.08,
+                hybrid_rul_pct: 73.2,
+                physics_rul_pct: 75.7,
                 inverter_status: 1,
                 local_ts: Date.now()
             });
