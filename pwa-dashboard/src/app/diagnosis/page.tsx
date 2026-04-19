@@ -23,7 +23,9 @@ export default function DiagnosisPage() {
         { key: 'temperature', id: '3019', name: 'Internal Temp', desc: 'Core heat sink temperature' },
         { key: 'inverter_current', id: '3054', name: 'Load Current', desc: 'Current draw from inverter' },
         { key: 'inrush_ratio', id: 'calc', name: 'Inrush Peak', desc: 'High stress startup ratio' },
-        { key: 'physics_health_index', id: 'calc', name: 'Physics Index', desc: 'Linear Wear & Tear Model' },
+        { key: 'physics_rul_pct', id: 'calc', name: 'Physics RUL', desc: 'Linear Wear & Tear Model' },
+        { key: 'ml_rul_pct', id: 'calc', name: 'ML RUL', desc: 'LSTM Inference with variance' },
+        { key: 'hybrid_rul_pct', id: 'calc', name: 'Hybrid RUL', desc: 'Weighted Multi-Model Blend' },
     ];
 
     return (
