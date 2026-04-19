@@ -88,10 +88,13 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     inverter_status: 1,
                     local_ts: Date.now()
                 });
-            }
-            // FIX 3: Always hard-clear when switching to live mode
-            setData({});
-            lastRecvTime.current = Date.now(); // reset timer so timeout doesn't fire immediately
+            // Reset timers
+            lastRecvTime.current = Date.now();
+        } else {
+            // Live Mode setup
+            setStatus('syncing');
+            setData({}); // Only hard-clear when ENTERING live mode
+            lastRecvTime.current = Date.now();
 
             const connect = () => {
                 const host = process.env.NEXT_PUBLIC_TB_HOST || 'eu.thingsboard.cloud';
@@ -259,19 +262,12 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 
                 const targetRUL = Math.max(100 - damage, 0);
                 
-                // Physics Rule: RUL must be monotonic (only decrease)
+                // Derive all RUL values synchronously for atomic update
                 const physicsRul = Math.min(prev.physics_rul_pct !== undefined ? prev.physics_rul_pct : 100, targetRUL);
-                
-                // ML RUL: Derived from physics with ±3% variance (offsetting)
                 const mlRulRaw = physicsRul + (Math.random() - 0.5) * 6;
                 const mlRul = Math.min(Math.max(mlRulRaw, 0), 100);
-
-                // Hybrid RUL Calculation (Weighted Blend)
-                // When physics_rul is high (100), weight_ml is 0. 
-                // When physics_rul is low (0), weight_ml is 1.
                 const w_ml = 1 - (physicsRul / 100);
-                const w_physics = 1 - w_ml;
-                const hybridRul = (w_physics * physicsRul) + (w_ml * mlRul);
+                const hybridRul = ((physicsRul / 100) * physicsRul) + (w_ml * mlRul);
 
                 // 4. Alert Logic Correlated to Physics state
                 // 65C is Hardware Trip Point; RUL < 5% is Critical Depletion
@@ -310,12 +306,41 @@ export const TelemetryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const simulateStress = (type: 'temp' | 'inrush') => {
         if (demoMode) {
-            setData(prev => ({
-                ...prev,
-                temperature: type === 'temp' ? 65 : prev.temperature,
-                inrush_ratio: type === 'inrush' ? 92.0 : prev.inrush_ratio,
-                inverter_current: type === 'inrush' ? 27.5 : prev.inverter_current
-            }));
+            setData(prev => {
+                const jitter = (range: number) => (Math.random() - 0.5) * range;
+                const C = config?.constraints || { min_temp: 28, max_temp: 65, max_current: 45, min_rul: 0 };
+
+                // Apply the trigger inputs
+                const nextTemp = type === 'temp' ? 65.0 : prev.temperature || 40.0;
+                const nextCurrent = type === 'inrush' ? 27.5 : prev.inverter_current || 5.0;
+                const nextInrush = type === 'inrush' ? (80.0 + Math.random() * 15.0) : (prev.inrush_ratio || 8.0);
+                
+                // Derive all RUL values synchronously for atomic update
+                const cycles = (prev.cycle_count || 5020);
+                const stressFactor = Math.pow(2, (nextTemp - 25) / 10);
+                const currentPenalty = Math.exp(nextCurrent / 10);
+                const damage = (cycles / 1000) * currentPenalty * stressFactor;
+                const targetRUL = Math.max(100 - damage, 0);
+                
+                const physicsRul = Math.min(prev.physics_rul_pct !== undefined ? prev.physics_rul_pct : 100, targetRUL);
+                const mlRulRaw = physicsRul + (Math.random() - 0.5) * 6;
+                const mlRul = Math.min(Math.max(mlRulRaw, 0), 100);
+                const w_ml = 1 - (physicsRul / 100);
+                const hybridRul = ( (physicsRul / 100) * physicsRul) + (w_ml * mlRul);
+                const alert = (nextTemp >= 64.5 || physicsRul < 5) ? 'CRITICAL' : physicsRul < 45 ? 'WARNING' : 'NORMAL';
+
+                return {
+                    ...prev,
+                    temperature: nextTemp,
+                    inverter_current: nextCurrent,
+                    inrush_ratio: nextInrush,
+                    physics_rul_pct: physicsRul,
+                    ml_rul_pct: mlRul,
+                    hybrid_rul_pct: hybridRul,
+                    alert_level: alert,
+                    local_ts: Date.now()
+                };
+            });
             return;
         }
 
